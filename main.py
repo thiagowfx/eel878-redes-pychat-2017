@@ -5,19 +5,19 @@ import sys
 
 class ChatServer:
 
-    logger = logging.getLogger('server')
-
     def __init__(self,
                  hostname='',
                  port=8000,
                  ):
+        self.logger = logging.getLogger('server')
+
         self.hostname = hostname
         self.port = port
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
-        logger.info('Starting on %s:%d', self.hostname, self.port)
+        self.logger.info('Starting on %s:%d', self.hostname, self.port)
         self.socket.bind((self.hostname, self.port))
 
         self.socket.listen(5)
@@ -29,7 +29,7 @@ class ChatServer:
 
 
 if __name__ == '__main__':
-    logging.basicConfig(filename='main.log',
+    logging.basicConfig(filename='pychat.log',
                         filemode='w',
                         format='%(levelname)s:%(asctime)s:%(name)s:%(module)s.%(funcName)s:%(message)s',
                         level=logging.INFO
