@@ -3,6 +3,7 @@
 
 import argparse
 import logging
+import queue
 import select
 import socket
 import sys
@@ -23,8 +24,11 @@ class ChatServer:
 
         self.address = (self.host, self.port)
 
-        self.inputs = []
-        self.outputs = []
+        self.inputs = set()
+        self.outputs = set()
+
+        # dict of socket -> queue<str>
+        self.msg_queues = {}
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -35,7 +39,7 @@ class ChatServer:
 
         self.socket.listen(5)
 
-        self.inputs.append(self.socket)
+        self.inputs.add(self.socket)
 
         while self.inputs:
             rlist, wlist, _ = select.select(self.inputs,
@@ -48,22 +52,36 @@ class ChatServer:
                     self.logger.info('accepting from %s', client_address)
 
                     client_socket.setblocking(0)
-                    self.inputs.append(client_socket)
+
+                    self.inputs.add(client_socket)
+                    self.msg_queues[client_socket] = queue.Queue()
 
                 else:
                     buf = s.recv(BUFFER_SIZE)
                     if len(buf) > 0:
-                        broadcast_msg(buf, s)
+                        self.logger.info('received from %s: %s', s.getpeername(), buf)
+                        self.broadcast_msg_async(buf, s)
+
 
             for s in wlist:
-                # TODO: write to client
-                pass
+                msg_queue = self.msg_queues[s]
+
+                if not msg_queue.empty():
+                    msg = msg_queue.get()
+                    self.logger.info('sending to %s: %s', s.getpeername(), msg)
+                    m = s.send(msg)
+
+                    if msg_queue.empty():
+                        self.outputs.remove(s)
+
 
         return 0
 
-    def broadcast_msg(self, msg, sender):
-        pass
-
+    def broadcast_msg_async(self, msg, sender):
+        for s, msg_queue in self.msg_queues.items():
+            if s is not sender:
+                msg_queue.put(msg)
+                self.outputs.add(s)
 
 class ChatClient:
 
@@ -78,8 +96,8 @@ class ChatClient:
 
         self.address = (self.host, self.port)
 
-        self.inputs = []
-        self.outputs = []
+        self.inputs = set()
+        self.outputs = set()
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -87,7 +105,7 @@ class ChatClient:
         self.logger.info('connecting to %s', self.address)
         self.socket.connect(self.address)
 
-        self.inputs.append(self.socket)
+        self.inputs.add(self.socket)
 
         while self.inputs:
             rlist, wlist, _ = select.select(self.inputs,
@@ -120,7 +138,7 @@ if __name__ == '__main__':
     args = set_up_argparse()
 
     port = args.port if args.port else 9000
-    host = args.host if args.port else ''
+    host = args.host if args.host else ''
     mode = args.mode
 
     if mode == 'client':
