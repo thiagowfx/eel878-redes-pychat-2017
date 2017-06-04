@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import argparse
 import logging
 import select
 import socket
 import sys
+
+BUFFER_SIZE = 1024
 
 
 class ChatServer:
@@ -36,8 +39,8 @@ class ChatServer:
 
         while self.inputs:
             rlist, wlist, _ = select.select(self.inputs,
-                                                self.outputs,
-                                                [])
+                                            self.outputs,
+                                            [])
 
             for s in rlist:
                 if s is self.socket:
@@ -48,14 +51,18 @@ class ChatServer:
                     self.inputs.append(client_socket)
 
                 else:
-                    # TODO: receive from client
-                    pass
+                    buf = s.recv(BUFFER_SIZE)
+                    if len(buf) > 0:
+                        broadcast_msg(buf, s)
 
             for s in wlist:
                 # TODO: write to client
                 pass
 
         return 0
+
+    def broadcast_msg(self, msg, sender):
+        pass
 
 
 class ChatClient:
@@ -129,3 +136,4 @@ if __name__ == '__main__':
 #  - https://docs.python.org/3/howto/argparse.html
 #  - https://docs.python.org/3/howto/logging.html
 #  - https://docs.python.org/3/howto/sockets.html
+#  - https://www.gta.ufrj.br/~menezes/eel878/
