@@ -1,4 +1,14 @@
-all:
-	python3 main.py
+server: start_server
 
-.PHONY: all
+client: start_client
+
+start_server:
+	./pychat.py server
+
+start_client:
+	./pychat.py client
+
+clean:
+	$(RM) *.log
+
+.PHONY: clean
