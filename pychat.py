@@ -113,7 +113,9 @@ class ChatClient:
                                             [])
 
             for s in rlist:
-                pass
+                buf = s.recv(BUFFER_SIZE)
+                if len(buf) > 0:
+                    self.logger.info('received from %s: %s', s.getpeername(), buf)
 
 
 def set_up_logging():
