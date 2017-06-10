@@ -1,6 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+"""
+----------
+References
+----------
+
+    - https://www.gta.ufrj.br/~menezes/eel878/
+    - https://docs.python.org/3/howto/argparse.html
+    - https://docs.python.org/3/howto/logging.html
+    - https://docs.python.org/3/howto/sockets.html
+    - http://effbot.org/tkinterbook/
+    - http://www.tkdocs.com/tutorial/
+"""
+
 import argparse
 import logging
 import queue
@@ -8,8 +21,7 @@ import select
 import socket
 import sys
 import tkinter as tk
-
-BUFFER_SIZE = 1024
+import threading
 
 
 class ChatServer:
@@ -22,6 +34,7 @@ class ChatServer:
         self.host = host
         self.port = port
         self.logger = logger
+        self.buffer_size = 1024
 
         self.address = (self.host, self.port)
 
@@ -58,7 +71,7 @@ class ChatServer:
                     self.msg_queues[client_socket] = queue.Queue()
 
                 else:
-                    buf = s.recv(BUFFER_SIZE)
+                    buf = s.recv(self.buffer_size)
                     if len(buf) > 0:
                         self.logger.info('received from %s: %s', s.getpeername(), buf)
                         self.broadcast_msg_async(buf, s)
@@ -92,40 +105,92 @@ class ChatClient:
         self.host = host
         self.port = port
         self.logger = logger
+        self.buffer_size = 1024
 
         self.address = (self.host, self.port)
-
-        self.inputs = set()
-        self.outputs = set()
+        self.msg_queue = queue.Queue()
 
     def start(self):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.logger.info('connecting to %s', self.address)
         self.socket.connect(self.address)
+        self.sockets = [self.socket]
+        
+        self.local_addr = self.socket.getsockname()
+        self.remote_addr = self.socket.getpeername()
+        self.logger.info('%s connected to %s', self.local_addr, self.remote_addr)
 
-        self.inputs.add(self.socket)
+        while self.sockets:
+            rlist, wlist, xlist = select.select(self.sockets,
+                                                self.sockets,
+                                                self.sockets)
 
-        while self.inputs:
-            rlist, wlist, _ = select.select(self.inputs,
-                                            self.outputs,
-                                            [])
+            for s in xlist:
+                    self.closeConnection()
 
             for s in rlist:
-                buf = s.recv(BUFFER_SIZE)
-                if len(buf) > 0:
-                    self.logger.info('received from %s: %s', s.getpeername(), buf)
+                try:
+                    buf = s.recv(self.buffer_size)
+                    if len(buf) > 0:
+                        self.logger.info('%s received from %s: %s', s.getsockname(), s.getpeername(), buf)
+                except Exception as e:
+                    self.logger.info('%s got exception: %s', self.local_addr, e)
+                    self.closeConnection()
+                    
+            for s in wlist:
+                if not self.msg_queue.empty():
+                    msg = self.msg_queue.get().encode()
+                    self.logger.info('%s sending to %s: %s', s.getsockname(), s.getpeername(), msg)
+                    s.send(msg)
+
+    def sendMessage(self, msg):
+       self.msg_queue.put(msg)
+       
+    def closeConnection(self):
+        self.logger.info('%s is closing connection with %s', self.local_addr,self.remote_addr)
+        self.sockets = []
+        self.socket.close()
 
 
 class ChatGUI(tk.Frame):
-    def __init__(self, parent, *args, **kwargs):
-        tk.Frame.__init__(self, parent, *args, **kwargs)
-        self.parent = parent
+    def __init__(self, root, host, port, width=800, height=800, *args, **kwargs):
+        tk.Frame.__init__(self, root, *args, **kwargs)
 
-        self.parent.title("PyChat")
-
-        self.label = tk.Label(parent, text="Label")
-        self.label.pack()
+        self.root = root
+        self.width = width
+        self.height = height
+        self.chatClient = ChatClient(host=host, port=port)
+        
+        self.root.title("PyChat Client")
+        self.root.geometry("%sx%s" % (self.width, self.height))
+        
+        self.menubar = tk.Menu(self.root, tearoff=False)
+        self.menu_file = tk.Menu(self.menubar)
+        self.menubar.add_cascade(menu=self.menu_file, label="Arquivo")
+        self.menu_file.add_separator()
+        self.menu_file.add_command(label="Sair", command=self.quitAction)
+        self.root.config(menu=self.menubar)
+        
+        self.chatText = tk.Text(self.root, bg="gray", state=tk.DISABLED)
+        self.chatText.pack(fill=tk.X)
+        
+        self.messageText = tk.Text(self.root, bg="white")
+        self.messageText.pack(fill=tk.X)
+        
+        self.sendButton = tk.Button(self.root, text="Enviar", command=self.sendButtonAction)
+        self.sendButton.pack(fill=tk.X)
+        
+        self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta and Heitor Guimarães")
+        self.bottomLabel.pack(fill=tk.X)
+        
+        threading.Thread(target=self.chatClient.start).start()
+        
+    def quitAction(self):
+        print("quit action")
+        
+    def sendButtonAction(self):
+        self.chatClient.sendMessage(self.messageText.get("1.0", tk.END))
 
 
 def set_up_logging():
@@ -155,18 +220,12 @@ if __name__ == '__main__':
 
     if mode == 'client':
         root = tk.Tk()
-        ChatGUI(root).pack(side="top", fill="both", expand=True)
+        ChatGUI(root, host, port).pack(side="top", fill="both", expand=True)
         root.mainloop()
-        sys.exit(ChatClient(host=host, port=port).start())
+        
     elif mode == 'server':
         sys.exit(ChatServer(host=host, port=port).start())
+
     else:
         print("error: mode must be either client or server")
         sys.exit(1)
-
-
-# References:
-#  - https://docs.python.org/3/howto/argparse.html
-#  - https://docs.python.org/3/howto/logging.html
-#  - https://docs.python.org/3/howto/sockets.html
-#  - https://www.gta.ufrj.br/~menezes/eel878/
