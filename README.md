@@ -5,14 +5,15 @@ Instructions
 ------------
 
 * Ensure you have `python3` installed and in your system `PATH`.
-* To start a server, run `make server`.
-* To start a client, run `make client`.
-* If you want to {start on, connect to} a different hostname or post, then run
-  the `pychat.py` binary directly. To see its usage, run `./pychat.py -h`.
-* A log file is automatically created and written to on `pychat.log`.
+* To start a server, run `make server`, or `./pychat.py server`.
+* To start a client, run `make client`, or `./pychat.py client`.
+* If you want to {start on, connect to} a different hostname or port, then run
+  the `pychat.py` binary directly with the appropriate command-line flags.
+  To see its usage, run `./pychat.py -h` or `./pychat.py --help`.
+* A log file is automatically created and written to `pychat.log`.
 
 Team
 ----
 
-* Thiago Perrotta
+* Thiago Barroso Perrotta
 * Heitor Guimarães
