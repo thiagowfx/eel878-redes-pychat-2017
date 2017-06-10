@@ -166,7 +166,7 @@ class ChatGUI(tk.Frame):
         self.height = height
         self.chatClient = ChatClient(host=host, port=port, receiver=self)
         
-        self.root.title("PyChat Client")
+        self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
         
         self.menubar = tk.Menu(self.root, tearoff=False)
@@ -185,7 +185,7 @@ class ChatGUI(tk.Frame):
         self.sendButton = tk.Button(self.root, text="Enviar", command=self.sendButtonAction)
         self.sendButton.pack(fill=tk.X)
         
-        self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta and Heitor Guimarães")
+        self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
         self.bottomLabel.pack(fill=tk.X)
         
         threading.Thread(target=self.chatClient.start).start()

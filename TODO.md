@@ -1,9 +1,12 @@
-- interface gráfica (Tk)
+- interface gráfica (Tk) --> melhorar
+- quit method
 - segurança (SSL/TLS)
 - parsing to HTTP (request via web browser)
 - logar com um usuário específico (setar o nome do usuário antes de logar)
 - suporte a unicode / emoji
 - suporte a imagens (via base64)
+- adicionar lista de usuários conectados na interface?? (medium)
+- cores
 
 - relatório
 - demo (apresentação -- 10min)
