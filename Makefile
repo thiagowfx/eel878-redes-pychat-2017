@@ -4,10 +4,10 @@ all:
 	$(MAIN) --help
 
 client:
-	$(MAIN) client
+	$(MAIN) --mode=client
 
 server:
-	$(MAIN) server
+	$(MAIN) --mode=server
 
 clean:
 	$(RM) *.log *.pyc

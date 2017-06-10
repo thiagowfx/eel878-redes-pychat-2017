@@ -7,6 +7,7 @@ import queue
 import select
 import socket
 import sys
+import tkinter as tk
 
 BUFFER_SIZE = 1024
 
@@ -62,18 +63,16 @@ class ChatServer:
                         self.logger.info('received from %s: %s', s.getpeername(), buf)
                         self.broadcast_msg_async(buf, s)
 
-
             for s in wlist:
                 msg_queue = self.msg_queues[s]
 
                 if not msg_queue.empty():
                     msg = msg_queue.get()
                     self.logger.info('sending to %s: %s', s.getpeername(), msg)
-                    m = s.send(msg)
+                    s.send(msg)
 
                     if msg_queue.empty():
                         self.outputs.remove(s)
-
 
         return 0
 
@@ -83,8 +82,8 @@ class ChatServer:
                 msg_queue.put(msg)
                 self.outputs.add(s)
 
-class ChatClient:
 
+class ChatClient:
     def __init__(self,
                  host,
                  port,
@@ -118,6 +117,17 @@ class ChatClient:
                     self.logger.info('received from %s: %s', s.getpeername(), buf)
 
 
+class ChatGUI(tk.Frame):
+    def __init__(self, parent, *args, **kwargs):
+        tk.Frame.__init__(self, parent, *args, **kwargs)
+        self.parent = parent
+
+        self.parent.title("PyChat")
+
+        self.label = tk.Label(parent, text="Label")
+        self.label.pack()
+
+
 def set_up_logging():
     logging.basicConfig(filename='pychat.log',
                         filemode='a',
@@ -131,7 +141,7 @@ def set_up_argparse():
 
     parser.add_argument("--host", help="the socket host", type=str)
     parser.add_argument("--port", help="the socket port", type=int)
-    parser.add_argument("mode", help="client or server", type=str)
+    parser.add_argument("--mode", help="client or server", type=str)
 
     return parser.parse_args()
 
@@ -144,6 +154,9 @@ if __name__ == '__main__':
     mode = args.mode
 
     if mode == 'client':
+        root = tk.Tk()
+        ChatGUI(root).pack(side="top", fill="both", expand=True)
+        root.mainloop()
         sys.exit(ChatClient(host=host, port=port).start())
     elif mode == 'server':
         sys.exit(ChatServer(host=host, port=port).start())
