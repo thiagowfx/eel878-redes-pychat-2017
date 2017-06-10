@@ -1,14 +1,15 @@
-server: start_server
+MAIN = ./pychat.py
 
-client: start_client
+all:
+	$(MAIN) --help
 
-start_server:
-	./pychat.py server
+client:
+	$(MAIN) client
 
-start_client:
-	./pychat.py client
+server:
+	$(MAIN) server
 
 clean:
-	$(RM) *.log
+	$(RM) *.log *.pyc
 
-.PHONY: clean
+.PHONY: all clean
