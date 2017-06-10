@@ -100,11 +100,13 @@ class ChatClient:
     def __init__(self,
                  host,
                  port,
-                 logger=logging.getLogger('client')
+                 logger=logging.getLogger('client'),
+                 receiver=None
                  ):
         self.host = host
         self.port = port
         self.logger = logger
+        self.receiver = receiver
         self.buffer_size = 1024
 
         self.address = (self.host, self.port)
@@ -134,6 +136,8 @@ class ChatClient:
                     buf = s.recv(self.buffer_size)
                     if len(buf) > 0:
                         self.logger.info('%s received from %s: %s', s.getsockname(), s.getpeername(), buf)
+                        if self.receiver is not None:
+                            self.receiver.receiveMessageAction(buf)
                 except Exception as e:
                     self.logger.info('%s got exception: %s', self.local_addr, e)
                     self.closeConnection()
@@ -160,7 +164,7 @@ class ChatGUI(tk.Frame):
         self.root = root
         self.width = width
         self.height = height
-        self.chatClient = ChatClient(host=host, port=port)
+        self.chatClient = ChatClient(host=host, port=port, receiver=self)
         
         self.root.title("PyChat Client")
         self.root.geometry("%sx%s" % (self.width, self.height))
@@ -189,6 +193,11 @@ class ChatGUI(tk.Frame):
     def quitAction(self):
         print("quit action")
         
+    def receiveMessageAction(self, msg):
+        self.chatText.config(state=tk.NORMAL)
+        self.chatText.insert(tk.END, msg.decode())
+        self.chatText.config(state=tk.DISABLED)
+
     def sendButtonAction(self):
         self.chatClient.sendMessage(self.messageText.get("1.0", tk.END))
 
