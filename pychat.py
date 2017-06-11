@@ -35,6 +35,8 @@ class ChatServer:
         self.port = port
         self.logger = logger
         self.buffer_size = 1024
+        self.max_connections = 5
+        self.timeout = 1
 
         self.address = (self.host, self.port)
 
@@ -51,14 +53,15 @@ class ChatServer:
         self.logger.info('starting on %s', self.address)
         self.socket.bind(self.address)
 
-        self.socket.listen(5)
+        self.socket.listen(self.max_connections)
 
         self.inputs.add(self.socket)
 
         while self.inputs:
             rlist, wlist, _ = select.select(self.inputs,
                                             self.outputs,
-                                            [])
+                                            [],
+                                            self.timeout)
 
             for s in rlist:
                 if s is self.socket:
@@ -108,6 +111,7 @@ class ChatClient:
         self.logger = logger
         self.receiver = receiver
         self.buffer_size = 1024
+        self.timeout = 1
 
         self.address = (self.host, self.port)
         self.msg_queue = queue.Queue()
@@ -116,7 +120,12 @@ class ChatClient:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.logger.info('connecting to %s', self.address)
-        self.socket.connect(self.address)
+        
+        try:
+            self.socket.connect(self.address)
+        except:
+            self.logger.info('could not conect to server; exiting...')
+            raise SystemExit
         self.sockets = [self.socket]
         
         self.local_addr = self.socket.getsockname()
@@ -126,7 +135,8 @@ class ChatClient:
         while self.sockets:
             rlist, wlist, xlist = select.select(self.sockets,
                                                 self.sockets,
-                                                self.sockets)
+                                                self.sockets,
+                                                self.timeout)
 
             for s in xlist:
                     self.closeConnection()
@@ -188,10 +198,12 @@ class ChatGUI(tk.Frame):
         self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
         self.bottomLabel.pack(fill=tk.X)
         
-        threading.Thread(target=self.chatClient.start).start()
+        self.chatClientThread = threading.Thread(target=self.chatClient.start)
+        self.chatClientThread.daemon = True # terminate if the main thread (Tk GUI) terminates
+        self.chatClientThread.start()
         
     def quitAction(self):
-        print("quit action")
+        sys.exit(0)
         
     def receiveMessageAction(self, msg):
         self.chatText.config(state=tk.NORMAL)
