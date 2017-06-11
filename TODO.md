@@ -1,5 +1,4 @@
 - interface gráfica (Tk) --> melhorar
-- quit method
 - segurança (SSL/TLS)
 - parsing to HTTP (request via web browser)
 - logar com um usuário específico (setar o nome do usuário antes de logar)
