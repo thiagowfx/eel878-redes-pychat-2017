@@ -15,14 +15,14 @@ References
 """
 
 import argparse
+import json
 import logging
 import queue
 import select
 import socket
 import sys
-import tkinter as tk
 import threading
-import json
+import tkinter as tk
 
 
 class ChatServer:
@@ -105,12 +105,12 @@ class ChatClient:
                  host,
                  port,
                  logger=logging.getLogger('client'),
-                 receiver=None
+                 gui=None
                  ):
         self.host = host
         self.port = port
         self.logger = logger
-        self.receiver = receiver
+        self.gui = gui
         self.buffer_size = 1024
         self.timeout = 1
 
@@ -121,14 +121,14 @@ class ChatClient:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         self.logger.info('connecting to %s', self.address)
-        
+
         try:
             self.socket.connect(self.address)
         except:
             self.logger.info('could not conect to server; exiting...')
             raise SystemExit
         self.sockets = [self.socket]
-        
+
         self.local_addr = self.socket.getsockname()
         self.remote_addr = self.socket.getpeername()
         self.logger.info('%s connected to %s', self.local_addr, self.remote_addr)
@@ -147,12 +147,12 @@ class ChatClient:
                     buf = s.recv(self.buffer_size)
                     if len(buf) > 0:
                         self.logger.info('%s received from %s: %s', s.getsockname(), s.getpeername(), buf)
-                        if self.receiver is not None:
-                            self.receiver.receiveMessageAction(buf)
+                        if self.gui is not None:
+                            self.gui.receiveMessageAction(buf.decode())
                 except Exception as e:
                     self.logger.info('%s got exception: %s', self.local_addr, e)
                     self.closeConnection()
-                    
+
             for s in wlist:
                 if not self.msg_queue.empty():
                     msg = self.msg_queue.get().encode()
@@ -161,7 +161,7 @@ class ChatClient:
 
     def sendMessage(self, msg):
        self.msg_queue.put(msg)
-       
+
     def closeConnection(self):
         self.logger.info('%s is closing connection with %s', self.local_addr,self.remote_addr)
         self.sockets = []
@@ -175,26 +175,26 @@ class ChatGUI(tk.Frame):
         self.root = root
         self.width = width
         self.height = height
-        self.chatClient = ChatClient(host=host, port=port, receiver=self)
-        
+        self.chatClient = ChatClient(host=host, port=port, gui=self)
+
         # Initial definitions
         self.cheatCommands = ['/nick', '/me']
         self.nickname = str(host) + str(port)
-        
+
         self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
         self.root.resizable(width=False, height=False)
-        
+
         self.menubar = tk.Menu(self.root, tearoff=False)
         self.menu_file = tk.Menu(self.menubar)
         self.menubar.add_cascade(menu=self.menu_file, label="Arquivo")
         self.menu_file.add_separator()
         self.menu_file.add_command(label="Sair", command=self.quitAction)
         self.root.config(menu=self.menubar)
-        
+
         self.chatText = tk.Text(self.root, bg="gray", state=tk.DISABLED)
         self.chatText.place(x=6,y=6, height=300, width=550)
-        
+
         self.messageText = tk.Text(self.root, bg="white")
         self.messageText.bind("<Return>", self.sendPressed)
         self.messageText.place(x=6, y=310, height=80, width=550)
@@ -208,31 +208,35 @@ class ChatGUI(tk.Frame):
 
         self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
         self.bottomLabel.place(x=6,y=390)
-        
+
         self.chatClientThread = threading.Thread(target=self.chatClient.start)
         self.chatClientThread.daemon = True # terminate if the main thread (Tk GUI) terminates
         self.chatClientThread.start()
-        
+
     def quitAction(self):
         sys.exit(0)
-        
-    def receiveMessageAction(self, msg):
-        msg = json.loads(msg.decode())
+
+    def receiveMessageAction(self, body_str):
+        body = json.loads(body_str)
         self.chatText.config(state=tk.NORMAL)
-        self.chatText.insert(tk.END, msg['user'] + ': ' + msg['msg'])
+        self.chatText.insert(tk.END, body['nickname'] + ': ' + body['msg'])
         self.chatText.config(state=tk.DISABLED)
         self.chatText.see(tk.END)
 
     def sendButtonAction(self):
-        input_text = self.messageText.get("1.0", tk.END)
-        parsed_text = self.parseMSG(input_text)
+        input_msg = self.messageText.get("1.0", tk.END)
+        parsed_msg = self.parseMSG(input_msg)
 
         # If is not a /nick, just send to server
-        if parsed_text:
-            req = {'user': self.nickname, 'msg': parsed_text}
-            req = json.dumps(req)
-            self.chatClient.sendMessage(req)
-            self.receiveMessageAction(req)
+        if parsed_msg:
+            body = {
+                'nickname': self.nickname,
+                'msg': parsed_msg
+            }
+            body_str = json.dumps(body)
+
+            self.chatClient.sendMessage(body_str)
+            self.receiveMessageAction(body_str)
 
         # Clear Text box
         self.messageText.delete("1.0", tk.END)
@@ -290,7 +294,7 @@ if __name__ == '__main__':
         root = tk.Tk()
         ChatGUI(root, host, port).pack(side="top", fill="both", expand=True)
         root.mainloop()
-        
+
     elif mode == 'server':
         sys.exit(ChatServer(host=host, port=port).start())
 
