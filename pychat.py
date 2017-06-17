@@ -200,7 +200,8 @@ class ChatGUI(tk.Frame):
 
         self.scrollbar = tk.Scrollbar(self.root, command=self.chatText.yview, cursor="heart")
         self.chatText['yscrollcommand'] = self.scrollbar.set
-        
+        self.scrollbar.place(x=550, y=6, height=300, width=15)
+
         self.sendButton = tk.Button(self.root, text="Enviar", command=self.sendButtonAction)
         self.sendButton.place(x=562, y=310, height=80,width=50)
 
@@ -216,8 +217,9 @@ class ChatGUI(tk.Frame):
         
     def receiveMessageAction(self, msg):
         self.chatText.config(state=tk.NORMAL)
-        self.chatText.insert(tk.END, msg.decode())
+        self.chatText.insert(tk.END, msg['user'] + ': ' + msg['msg'])
         self.chatText.config(state=tk.DISABLED)
+        self.chatText.see(tk.END)
 
     def sendButtonAction(self):
         input_text = self.messageText.get("1.0", tk.END)
@@ -227,7 +229,8 @@ class ChatGUI(tk.Frame):
         if parsed_text:
             req = {'user': self.nickname, 'msg': parsed_text}
             self.chatClient.sendMessage(req)
-        
+            self.receiveMessageAction(req)
+
         # Clear Text box
         self.messageText.delete("1.0", tk.END)
 
