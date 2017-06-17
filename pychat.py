@@ -154,7 +154,7 @@ class ChatClient:
                     
             for s in wlist:
                 if not self.msg_queue.empty():
-                    msg = self.msg_queue.get().encode()
+                    msg = self.msg_queue.get()['msg'].encode()
                     self.logger.info('%s sending to %s: %s', s.getsockname(), s.getpeername(), msg)
                     s.send(msg)
 
@@ -168,7 +168,7 @@ class ChatClient:
 
 
 class ChatGUI(tk.Frame):
-    def __init__(self, root, host, port, width=600, height=400, *args, **kwargs):
+    def __init__(self, root, host, port, width=620, height=420, *args, **kwargs):
         tk.Frame.__init__(self, root, *args, **kwargs)
 
         self.root = root
@@ -182,6 +182,7 @@ class ChatGUI(tk.Frame):
         
         self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
+        self.root.resizable(width=False, height=False)
         
         self.menubar = tk.Menu(self.root, tearoff=False)
         self.menu_file = tk.Menu(self.menubar)
@@ -191,17 +192,20 @@ class ChatGUI(tk.Frame):
         self.root.config(menu=self.menubar)
         
         self.chatText = tk.Text(self.root, bg="gray", state=tk.DISABLED)
-        self.chatText.pack(fill=tk.X)
+        self.chatText.place(x=6,y=6, height=300, width=550)
         
         self.messageText = tk.Text(self.root, bg="white")
         self.messageText.bind("<Return>", self.sendPressed)
-        self.messageText.pack(fill=tk.X)
+        self.messageText.place(x=6, y=310, height=80, width=550)
+
+        self.scrollbar = tk.Scrollbar(self.root, command=self.chatText.yview, cursor="heart")
+        self.chatText['yscrollcommand'] = self.scrollbar.set
         
         self.sendButton = tk.Button(self.root, text="Enviar", command=self.sendButtonAction)
-        self.sendButton.pack(fill=tk.X)
+        self.sendButton.place(x=562, y=310, height=80,width=50)
 
         self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
-        self.bottomLabel.pack(fill=tk.X)
+        self.bottomLabel.place(x=6,y=390)
         
         self.chatClientThread = threading.Thread(target=self.chatClient.start)
         self.chatClientThread.daemon = True # terminate if the main thread (Tk GUI) terminates
@@ -221,7 +225,8 @@ class ChatGUI(tk.Frame):
 
         # If is not a /nick, just send to server
         if parsed_text:
-            self.chatClient.sendMessage(parsed_text)
+            req = {'user': self.nickname, 'msg': parsed_text}
+            self.chatClient.sendMessage(req)
         
         # Clear Text box
         self.messageText.delete("1.0", tk.END)
