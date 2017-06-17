@@ -190,11 +190,12 @@ class ChatGUI(tk.Frame):
         self.chatText.pack(fill=tk.X)
         
         self.messageText = tk.Text(self.root, bg="white")
+        self.messageText.bind("<Return>", self.sendPressed)
         self.messageText.pack(fill=tk.X)
         
         self.sendButton = tk.Button(self.root, text="Enviar", command=self.sendButtonAction)
         self.sendButton.pack(fill=tk.X)
-        
+
         self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
         self.bottomLabel.pack(fill=tk.X)
         
@@ -212,6 +213,10 @@ class ChatGUI(tk.Frame):
 
     def sendButtonAction(self):
         self.chatClient.sendMessage(self.messageText.get("1.0", tk.END))
+        self.messageText.delete("1.0", tk.END)
+
+    def sendPressed(self, event):
+        self.sendButtonAction()
 
 
 def set_up_logging():
