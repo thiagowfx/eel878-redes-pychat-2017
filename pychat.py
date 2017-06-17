@@ -22,6 +22,7 @@ import socket
 import sys
 import tkinter as tk
 import threading
+import json
 
 
 class ChatServer:
@@ -154,7 +155,7 @@ class ChatClient:
                     
             for s in wlist:
                 if not self.msg_queue.empty():
-                    msg = self.msg_queue.get()['msg'].encode()
+                    msg = self.msg_queue.get().encode()
                     self.logger.info('%s sending to %s: %s', s.getsockname(), s.getpeername(), msg)
                     s.send(msg)
 
@@ -216,6 +217,7 @@ class ChatGUI(tk.Frame):
         sys.exit(0)
         
     def receiveMessageAction(self, msg):
+        msg = json.loads(msg.decode())
         self.chatText.config(state=tk.NORMAL)
         self.chatText.insert(tk.END, msg['user'] + ': ' + msg['msg'])
         self.chatText.config(state=tk.DISABLED)
@@ -228,6 +230,7 @@ class ChatGUI(tk.Frame):
         # If is not a /nick, just send to server
         if parsed_text:
             req = {'user': self.nickname, 'msg': parsed_text}
+            req = json.dumps(req)
             self.chatClient.sendMessage(req)
             self.receiveMessageAction(req)
 
