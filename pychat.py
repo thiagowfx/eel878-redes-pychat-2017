@@ -177,9 +177,9 @@ class ChatGUI(tk.Frame):
         self.height = height
         self.chatClient = ChatClient(host=host, port=port, gui=self)
 
-        # Initial definitions
-        self.cheatCommands = ['/nick', '/me']
-        self.nickname = str(host) + str(port)
+        # Cheat definitions
+        self.cheatCommands = ['/nick', '/nickname', '/me']
+        self.cheatSettings = {}
 
         self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
@@ -230,7 +230,7 @@ class ChatGUI(tk.Frame):
         # If is not a /nick, just send to server
         if parsed_msg:
             body = {
-                'nickname': self.nickname,
+                'nickname': self.cheatSettings.get('nickname', str(self.chatClient.local_addr)),
                 'msg': parsed_msg
             }
             body_str = json.dumps(body)
@@ -252,13 +252,13 @@ class ChatGUI(tk.Frame):
         # Check if the first word is a special command and process
         if first_word in self.cheatCommands:
             # Change the nickname of the user
-            if first_word == '/nick':
+            if first_word == '/nick' or first_word == '/nickname':
                 response = ''
-                self.nickname = ' '.join(text.split(' ')[1:]).rstrip()
+                self.cheatSettings['nickname'] = ' '.join(text.split(' ')[1:]).rstrip()
 
             # Use 3rd person on the message
             elif first_word == '/me':
-                ntext = text.replace('/me', self.nickname)
+                ntext = text.replace('/me', self.cheatSettings.get('nickname', str(self.chatClient.local_addr)))
                 response = ntext
 
         # Return the response
