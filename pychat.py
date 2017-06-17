@@ -168,13 +168,17 @@ class ChatClient:
 
 
 class ChatGUI(tk.Frame):
-    def __init__(self, root, host, port, width=800, height=800, *args, **kwargs):
+    def __init__(self, root, host, port, width=600, height=400, *args, **kwargs):
         tk.Frame.__init__(self, root, *args, **kwargs)
 
         self.root = root
         self.width = width
         self.height = height
         self.chatClient = ChatClient(host=host, port=port, receiver=self)
+        
+        # Initial definitions
+        self.cheatCommands = ['/nick', '/me']
+        self.nickname = str(host) + str(port)
         
         self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
@@ -212,11 +216,38 @@ class ChatGUI(tk.Frame):
         self.chatText.config(state=tk.DISABLED)
 
     def sendButtonAction(self):
-        self.chatClient.sendMessage(self.messageText.get("1.0", tk.END))
+        input_text = self.messageText.get("1.0", tk.END)
+        parsed_text = self.parseMSG(input_text)
+
+        # If is not a /nick, just send to server
+        if parsed_text:
+            self.chatClient.sendMessage(parsed_text)
+        
+        # Clear Text box
         self.messageText.delete("1.0", tk.END)
 
     def sendPressed(self, event):
         self.sendButtonAction()
+        return 'break'
+
+    def parseMSG(self, text):
+        response = text
+        first_word = text.split(' ')[0]
+
+        # Check if the first word is a special command and process
+        if first_word in self.cheatCommands:
+            # Change the nickname of the user
+            if first_word == '/nick':
+                response = ''
+                self.nickname = ' '.join(text.split(' ')[1:]).rstrip()
+
+            # Use 3rd person on the message
+            elif first_word == '/me':
+                ntext = text.replace('/me', self.nickname)
+                response = ntext
+
+        # Return the response
+        return response
 
 
 def set_up_logging():
