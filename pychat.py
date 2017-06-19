@@ -12,18 +12,20 @@ References
     - https://docs.python.org/3/howto/sockets.html
     - http://effbot.org/tkinterbook/
     - http://www.tkdocs.com/tutorial/
+    - https://carlo-hamalainen.net/blog/2013/1/24/python-ssl-socket-echo-test-with-self-signed-certificate
 """
 
 import argparse
 import json
 import logging
+import pygame
 import queue
 import select
 import socket
+import ssl
 import sys
 import threading
 import tkinter as tk
-
 
 class ChatServer:
 
@@ -47,8 +49,19 @@ class ChatServer:
         # dict of socket -> queue<str>
         self.msg_queues = {}
 
+        # Constants
+        self.certfile = 'server.crt'
+        self.keyfile = 'server.key'
+
     def start(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        unsafe_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Wrap socket with SSL using AES256
+        self.socket = ssl.wrap_socket(unsafe_socket,
+            server_side = True,
+            certfile = self.certfile,
+            keyfile = self.keyfile,
+            ssl_version=ssl.PROTOCOL_TLSv1)
+
         self.socket.setblocking(0)
 
         self.logger.info('starting on %s', self.address)
@@ -117,13 +130,23 @@ class ChatClient:
         self.address = (self.host, self.port)
         self.msg_queue = queue.Queue()
 
+        # Constants
+        self.ca_certs = 'server.crt'
+        self.hostname = 'com.pychat.s2017'
+
     def start(self):
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        unsafe_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Wrap the socket with SSL
+        self.socket = ssl.wrap_socket(unsafe_socket,
+            ca_certs = self.ca_certs,
+            cert_reqs = ssl.CERT_REQUIRED,
+            ssl_version = ssl.PROTOCOL_TLSv1)
 
         self.logger.info('connecting to %s', self.address)
-
         try:
             self.socket.connect(self.address)
+            cert = self.socket.getpeercert()
+            ssl.match_hostname(cert, self.hostname)
         except:
             self.logger.info('could not conect to server; exiting...')
             raise SystemExit
@@ -223,6 +246,10 @@ class ChatGUI(tk.Frame):
         self.chatText.config(state=tk.DISABLED)
         self.chatText.see(tk.END)
 
+        # New thread to play the msn sound
+        thread = threading.Thread(target = play_notify_msn)
+        thread.start()
+
     def sendButtonAction(self):
         input_msg = self.messageText.get("1.0", tk.END)
         parsed_msg = self.parseMSG(input_msg)
@@ -264,7 +291,6 @@ class ChatGUI(tk.Frame):
         # Return the response
         return response
 
-
 def set_up_logging():
     logging.basicConfig(filename='pychat.log',
                         filemode='a',
@@ -281,6 +307,15 @@ def set_up_argparse():
     parser.add_argument("--mode", help="client or server", type=str)
 
     return parser.parse_args()
+
+def play_notify_msn(filepath='msnsound.wav'):
+    pygame.init()
+    pygame.mixer.init()
+    sound = pygame.mixer.Sound(filepath)
+    clock = pygame.time.Clock()
+    sound.play()
+    while pygame.mixer.get_busy():
+        clock.tick(1000)
 
 if __name__ == '__main__':
     set_up_logging()
