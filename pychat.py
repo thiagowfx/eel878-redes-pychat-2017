@@ -202,7 +202,9 @@ class ChatGUI(tk.Frame):
 
         # Cheat definitions
         self.cheatCommands = ['/nick', '/nickname', '/me']
-        self.cheatSettings = {}
+        self.cheatSettings = {
+            'nickname': 'Anônimo'
+        }
 
         self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
@@ -257,7 +259,7 @@ class ChatGUI(tk.Frame):
         # If is not a /nick, just send to server
         if parsed_msg:
             body = {
-                'nickname': self.cheatSettings.get('nickname', str(self.chatClient.local_addr)),
+                'nickname': self.cheatSettings.get('nickname'),
                 'msg': parsed_msg
             }
             body_str = json.dumps(body)
@@ -285,7 +287,7 @@ class ChatGUI(tk.Frame):
 
             # Use 3rd person on the message
             elif first_word == '/me':
-                ntext = text.replace('/me', self.cheatSettings.get('nickname', str(self.chatClient.local_addr)))
+                ntext = text.replace('/me', self.cheatSettings.get('nickname'))
                 response = ntext
 
         # Return the response
