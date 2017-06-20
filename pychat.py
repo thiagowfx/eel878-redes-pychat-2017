@@ -20,8 +20,10 @@ import json
 import logging
 import pygame
 import queue
+import random
 import select
 import socket
+import string
 import ssl
 import sys
 import threading
@@ -192,7 +194,7 @@ class ChatClient:
 
 
 class ChatGUI(tk.Frame):
-    def __init__(self, root, host, port, width=620, height=420, *args, **kwargs):
+    def __init__(self, root, host, port, width=650, height=420, *args, **kwargs):
         tk.Frame.__init__(self, root, *args, **kwargs)
 
         self.root = root
@@ -201,10 +203,26 @@ class ChatGUI(tk.Frame):
         self.chatClient = ChatClient(host=host, port=port, gui=self)
 
         # Cheat definitions
-        self.cheatCommands = ['/nick', '/nickname', '/me']
+        self.cheatCommands = ['/nick', '/nickname', '/me',
+            '/list_colors', '/color', '/shock', '/help']
         self.cheatSettings = {
             'nickname': 'Anônimo'
         }
+
+        # Defining colors
+        self.colors = {
+            'roxo':'#770f5d',
+            'verde':'#21a540',
+            'preto':'black',
+            'amarelo':'#df9400',
+            'vermelho':'#b41435',
+            'azul':'#011f8f',
+            'cinza':'#666666'
+        }
+        self.selectedColor = random.choice(list(self.colors.keys()))
+
+        # Generate a random tag for a user (used for name color)
+        self.user_tag = ''.join(random.choices(string.ascii_uppercase + string.digits, k=15))
 
         self.root.title("Cliente PyChat")
         self.root.geometry("%sx%s" % (self.width, self.height))
@@ -218,6 +236,7 @@ class ChatGUI(tk.Frame):
         self.root.config(menu=self.menubar)
 
         self.chatText = tk.Text(self.root, bg="gray", state=tk.DISABLED)
+        self.chatText.tag_configure("ntext", font="Helvetica 9")
         self.chatText.place(x=6,y=6, height=300, width=550)
 
         self.messageText = tk.Text(self.root, bg="white")
@@ -229,9 +248,10 @@ class ChatGUI(tk.Frame):
         self.scrollbar.place(x=550, y=6, height=300, width=15)
 
         self.sendButton = tk.Button(self.root, text="Enviar", command=self.sendButtonAction)
-        self.sendButton.place(x=562, y=310, height=80,width=50)
+        self.sendButton.place(x=562, y=310, height=80,width=80)
 
         self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
+        self.bottomLabel.config(font=("Helvetica", 9))
         self.bottomLabel.place(x=6,y=390)
 
         self.chatClientThread = threading.Thread(target=self.chatClient.start)
@@ -244,13 +264,27 @@ class ChatGUI(tk.Frame):
     def receiveMessageAction(self, body_str):
         body = json.loads(body_str)
         self.chatText.config(state=tk.NORMAL)
-        self.chatText.insert(tk.END, body['nickname'] + ': ' + body['msg'])
+        self.chatText.tag_configure(body['user_tag'], font='Helvetica 9 bold', foreground=body['color'])
+        # Call nudge
+        if body['msg'] == '/shock':
+            self.chatText.insert(tk.END, body['nickname'] + ' ', body['user_tag'])
+            self.chatText.insert(tk.END, 'chamou a atenção do grupo', 'ntext')
+
+            # New thread to play the msn msg sound notify
+            thread = threading.Thread(target = play_notify_msn, args=('msnnudge.wav',))
+            thread.start()
+
+        # Just a normal msg
+        else:
+            self.chatText.insert(tk.END, body['nickname'] + ': ', body['user_tag'])
+            self.chatText.insert(tk.END, body['msg'], 'ntext')
+            
+            # New thread to play the msn msg sound notify
+            thread = threading.Thread(target = play_notify_msn)
+            thread.start()
+
         self.chatText.config(state=tk.DISABLED)
         self.chatText.see(tk.END)
-
-        # New thread to play the msn sound
-        thread = threading.Thread(target = play_notify_msn)
-        thread.start()
 
     def sendButtonAction(self):
         input_msg = self.messageText.get("1.0", tk.END)
@@ -260,7 +294,9 @@ class ChatGUI(tk.Frame):
         if parsed_msg:
             body = {
                 'nickname': self.cheatSettings.get('nickname'),
-                'msg': parsed_msg
+                'color': self.colors[self.selectedColor],
+                'msg': parsed_msg,
+                'user_tag': self.user_tag
             }
             body_str = json.dumps(body)
 
@@ -276,7 +312,7 @@ class ChatGUI(tk.Frame):
 
     def parseMSG(self, text):
         response = text
-        first_word = text.split(' ')[0]
+        first_word = text.split(' ')[0].rstrip()
 
         # Check if the first word is a special command and process
         if first_word in self.cheatCommands:
@@ -289,6 +325,51 @@ class ChatGUI(tk.Frame):
             elif first_word == '/me':
                 ntext = text.replace('/me', self.cheatSettings.get('nickname'))
                 response = ntext
+
+            # Print the list of available colors for a specific user
+            elif first_word == '/list_colors':
+                response = ''
+                self.receiveMessageAction(json.dumps({
+                    'nickname': 'pychat.bot',
+                    'color': '#ffffff',
+                    'msg': str(list(self.colors.keys())) + '\n',
+                    'user_tag': '000ABC'
+                }))
+
+            # Change the color of a user
+            elif first_word == '/color':
+                response = ''
+                color = text.split(' ')[1].rstrip()
+                if color in self.colors.keys():
+                    self.selectedColor = color
+                else:
+                    self.receiveMessageAction(json.dumps({
+                        'nickname': 'pychat.bot',
+                        'color': '#ffffff',
+                        'msg': 'Invalid Color. Type /list_colors to see the full list\n',
+                        'user_tag': '000ABC'
+                    }))
+            # Send a "Call atention" (msn nudge)
+            elif first_word == '/shock':
+                response = '/shock'
+
+            # Call for help
+            elif first_word == '/help':
+                response = ''
+                help_msg = """Lista de comandos do pychat
+                 ├── /nick (ou /nickname) X :: Mudar seu nome para X
+                 ├── /me [frase] :: Enviar frase na terceira pessoa (ex: /me ta com fome)
+                 ├── /list_colors :: Mostrar as cores disponiveis para um nickname
+                 ├── /color X :: Mudar a cor do seu nick para X
+                 ├── /shock :: Chamar atenção dos usuários
+                 ├── /help :: this\n"""
+
+                self.receiveMessageAction(json.dumps({
+                    'nickname': 'pychat.bot',
+                    'color': '#ffffff',
+                    'msg': help_msg,
+                    'user_tag': '000ABC'
+                }))
 
         # Return the response
         return response
@@ -316,8 +397,6 @@ def play_notify_msn(filepath='msnsound.wav'):
     sound = pygame.mixer.Sound(filepath)
     clock = pygame.time.Clock()
     sound.play()
-    while pygame.mixer.get_busy():
-        clock.tick(1000)
 
 if __name__ == '__main__':
     set_up_logging()
