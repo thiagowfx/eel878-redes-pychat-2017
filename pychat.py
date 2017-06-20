@@ -261,7 +261,7 @@ class ChatGUI(tk.Frame):
     def quitAction(self):
         sys.exit(0)
 
-    def receiveMessageAction(self, body_str):
+    def receiveMessageAction(self, body_str, play_notify = True):
         body = json.loads(body_str)
         self.chatText.config(state=tk.NORMAL)
         self.chatText.tag_configure(body['user_tag'], font='Helvetica 9 bold', foreground=body['color'])
@@ -280,8 +280,9 @@ class ChatGUI(tk.Frame):
             self.chatText.insert(tk.END, body['msg'], 'ntext')
             
             # New thread to play the msn msg sound notify
-            thread = threading.Thread(target = play_notify_msn)
-            thread.start()
+            if play_notify:
+                thread = threading.Thread(target = play_notify_msn)
+                thread.start()
 
         self.chatText.config(state=tk.DISABLED)
         self.chatText.see(tk.END)
@@ -301,7 +302,7 @@ class ChatGUI(tk.Frame):
             body_str = json.dumps(body)
 
             self.chatClient.sendMessage(body_str)
-            self.receiveMessageAction(body_str)
+            self.receiveMessageAction(body_str, play_notify=False)
 
         # Clear Text box
         self.messageText.delete("1.0", tk.END)
