@@ -236,7 +236,7 @@ class ChatGUI(tk.Frame):
         self.root.config(menu=self.menubar)
 
         self.chatText = tk.Text(self.root, bg="gray", state=tk.DISABLED)
-        self.chatText.tag_configure("ntext", font="Helvetica 9")
+        self.chatText.tag_configure("ntext", font="Helvetica 12")
         self.chatText.place(x=6,y=6, height=300, width=550)
 
         self.messageText = tk.Text(self.root, bg="white")
@@ -251,7 +251,7 @@ class ChatGUI(tk.Frame):
         self.sendButton.place(x=562, y=310, height=80,width=80)
 
         self.bottomLabel = tk.Label(self.root, text="Criado por Thiago Perrotta e Heitor Guimarães")
-        self.bottomLabel.config(font=("Helvetica", 9))
+        self.bottomLabel.config(font=("Helvetica", 10))
         self.bottomLabel.place(x=6,y=390)
 
         self.chatClientThread = threading.Thread(target=self.chatClient.start)
@@ -264,7 +264,7 @@ class ChatGUI(tk.Frame):
     def receiveMessageAction(self, body_str, play_notify = True):
         body = json.loads(body_str)
         self.chatText.config(state=tk.NORMAL)
-        self.chatText.tag_configure(body['user_tag'], font='Helvetica 9 bold', foreground=body['color'])
+        self.chatText.tag_configure(body['user_tag'], font='Helvetica 12 bold', foreground=body['color'])
         # Call nudge
         if body['msg'] == '/shock':
             self.chatText.insert(tk.END, body['nickname'] + ' ', body['user_tag'])
