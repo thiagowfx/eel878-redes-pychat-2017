@@ -278,7 +278,7 @@ class ChatGUI(tk.Frame):
         else:
             self.chatText.insert(tk.END, body['nickname'] + ': ', body['user_tag'])
             self.chatText.insert(tk.END, body['msg'], 'ntext')
-            
+
             # New thread to play the msn msg sound notify
             if play_notify:
                 thread = threading.Thread(target = play_notify_msn)
