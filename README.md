@@ -15,5 +15,5 @@ Instructions
 Team
 ----
 
-* Thiago Barroso Perrotta
+* Thiago Perrotta
 * Heitor Guimarães
